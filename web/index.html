@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#07121f">
+<meta name="description" content="Earth-system trend detective for hydropower water: NASA POWER trends, significance tests and drought early warning.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="HydroWatch">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>HydroWatch Global · AquaSentinel</title>
+<link rel="stylesheet" href="vendor/leaflet.min.css">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true"><circle cx="16" cy="16" r="14" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16 6c-4 6-7 9.5-7 13a7 7 0 0 0 14 0c0-3.5-3-7-7-13z" fill="currentColor" opacity=".85"/></svg>
+    <div><b>HydroWatch Global</b><span>AquaSentinel · Earth System Trend Detective</span></div>
+    <span class="netbadge" id="netBadge" hidden>Offline</span>
+  </div>
+  <nav>
+    <button class="navlink" id="btnWizard" title="Guided investigation"><i data-icon="search"></i>Guide me</button>
+    <button class="navlink" id="btnDemos"><i data-icon="play"></i>Watch a demo</button>
+    <button class="navlink" id="btnLearn"><i data-icon="book"></i>How it works</button>
+    <button class="navlink install" id="btnInstall" hidden><i data-icon="download"></i>Install app</button>
+  </nav>
+</header>
+
+<main class="layout">
+  <aside class="panel controls" id="sidebar" aria-label="Case file">
+    <!-- Slim rail shown when the sidebar is collapsed -->
+    <div class="sb-rail">
+      <button class="iconbtn" id="btnRailOpen" aria-label="Expand case file" title="Expand case file  ( [ )">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+      </button>
+      <span class="rail-label">Case file</span>
+      <button class="iconbtn primary" id="btnRunRail" aria-label="Analyse trend" title="Analyse trend">
+        <svg viewBox="0 0 24 24" aria-hidden="true" style="fill:currentColor"><path d="M8 5v14l11-7z"/></svg>
+      </button>
+    </div>
+
+    <div class="sb-full">
+      <div class="sb-head">
+        <h2>Case file</h2>
+        <div class="sb-actions">
+          <button class="btn small ghost" id="btnEdit" hidden aria-expanded="false"><i data-icon="edit"></i>Edit</button>
+          <button class="iconbtn" id="btnSidebar" aria-label="Collapse case file" aria-expanded="true" title="Collapse sidebar  ( [ )">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="pill" id="casePill" hidden></div>
+
+      <div class="sb-scroll" id="caseBody">
+        <details class="sec" open>
+          <summary><span class="num">1</span>Location</summary>
+          <div class="sec-body">
+            <label>Where? <small>(or click the map)</small>
+              <select id="site"></select>
+            </label>
+            <div class="sitenote" id="siteNote"></div>
+            <label>Map-click region size
+              <select id="boxSize">
+                <option value="2">2° × 2° (~220 km)</option>
+                <option value="3">3° × 3°</option>
+                <option value="5" selected>5° × 5° (~550 km)</option>
+                <option value="8">8° × 8°</option>
+                <option value="10">10° × 10° (max)</option>
+              </select>
+            </label>
+          </div>
+        </details>
+
+        <details class="sec" open>
+          <summary><span class="num">2</span>Variable</summary>
+          <div class="sec-body">
+            <label>What variable?
+              <select id="variable"></select>
+            </label>
+            <div class="vardef" id="varDef"></div>
+          </div>
+        </details>
+
+        <details class="sec" open>
+          <summary><span class="num">3</span>Period &amp; method</summary>
+          <div class="sec-body">
+            <div class="row2">
+              <label>From <input type="number" id="y0" min="1981" max="2024" value="1981"></label>
+              <label>To <input type="number" id="y1" min="1982" max="2025" value="2025"></label>
+            </div>
+            <label>Analyse as
+              <select id="mode">
+                <option value="annual">Yearly values (simplest)</option>
+                <option value="anomaly">Monthly anomalies (seasons removed)</option>
+              </select>
+            </label>
+            <label>Significance level
+              <select id="alpha">
+                <option value="0.05">5% (standard, 95% confidence)</option>
+                <option value="0.01">1% (strict, 99% confidence)</option>
+                <option value="0.1">10% (relaxed, 90% confidence)</option>
+              </select>
+            </label>
+          </div>
+        </details>
+
+        <div id="suggestBox" hidden>
+          <h3>Suggested clues</h3>
+          <div id="suggestList"></div>
+        </div>
+        <p class="fine">Data: NASA POWER monthly, 1981–2025 (MERRA-2 reanalysis; CERES/SRB for sunlight). Grid ≈ 0.5° × 0.625°.</p>
+      </div>
+
+      <div class="sb-foot">
+        <button class="btn primary wide" id="btnRun">Analyse trend</button>
+      </div>
+    </div>
+  </aside>
+
+  <section class="content">
+    <div class="welcome" id="welcome" hidden role="region" aria-label="Welcome">
+      <div><b>New here?</b> HydroWatch checks whether the water behind a dam is really changing. Pick a place in the Case file, or let us show you around.</div>
+      <div class="welcome-btns">
+        <button class="btn primary small" id="welcomeTour"><i data-icon="play"></i>60-second Kariba tour</button>
+        <button class="btn small" id="welcomeGuide"><i data-icon="search"></i>Guide me</button>
+        <button class="iconbtn" id="welcomeClose" aria-label="Dismiss welcome message"><i data-icon="x"></i></button>
+      </div>
+    </div>
+    <div class="status" id="status" hidden></div>
+
+    <div class="grid-top">
+      <div class="panel mapwrap">
+        <div class="paneltitle"><span>Where is it changing?</span><span class="hint">Each square = one grid cell's own trend. Solid = significant.</span></div>
+        <div class="mapbox"><div id="map"></div><div class="mapsummary" id="mapSummary"></div>
+          <div class="maptoggles" id="mapToggles" role="group" aria-label="Map layers">
+            <label><input type="checkbox" id="showGrid" checked> Grid cells</label>
+            <label><input type="checkbox" id="onlySig"> Significant only</label>
+            <label title="Benjamini-Hochberg false discovery rate: keeps only cells that stay significant after allowing for many simultaneous tests"><input type="checkbox" id="fdrOnly"> FDR-corrected</label>
+            <label><input type="checkbox" id="showRegion" checked> Region outline</label>
+          </div><div class="legend" id="legend"></div></div>
+      </div>
+      <div class="panel verdict">
+        <div class="paneltitle"><span>Detective's verdict</span><button class="btn small" id="btnPdf" disabled title="One-page PDF report for presentations"><i data-icon="file"></i>Report (PDF)</button></div>
+        <div id="headline" class="headline" hidden></div>
+        <p id="plainVerdict" class="plainverdict" hidden></p>
+        <div class="tiles" id="tiles"></div>
+        <details class="why" id="whyBox"><summary id="whySum">Why this verdict?</summary>
+          <div id="verdict" class="verdict-text">Pick a place and a variable, then press <b>Analyse trend</b> - or start with a guided investigation (<b>Guide me</b>).</div>
+        </details>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="paneltitle"><span id="tsTitle">Time series</span>
+        <span class="tools">
+          <label class="chk"><input type="checkbox" id="showSen" checked> Sen's slope</label>
+          <label class="chk"><input type="checkbox" id="showCI" checked> 95% band</label>
+          <label class="chk" title="Pettitt change-point test"><input type="checkbox" id="showChange" checked> Step change</label>
+          <label class="chk" id="smapWrap" hidden title="Overlay NASA SMAP satellite soil moisture (needs an Earthdata login on the server)"><input type="checkbox" id="showSmap"> SMAP overlay</label>
+          <label class="chk" id="imergWrap" hidden title="Overlay NASA GPM IMERG satellite rainfall (needs an Earthdata login on the server)"><input type="checkbox" id="showImerg"> GPM IMERG overlay</label>
+          <button class="btn small" id="btnCsv"><i data-icon="download"></i>CSV</button>
+          <button class="btn small" id="btnPngTs" data-png="tsChart"><i data-icon="download"></i>PNG</button>
+        </span>
+      </div>
+      <p class="howto" id="tsHow"></p>
+      <div id="obsNote" class="fine obsnote" hidden></div>
+      <div class="chartbox tall"><canvas id="tsChart"></canvas></div>
+    </div>
+
+    <div class="panel" id="scanPanel">
+      <div class="paneltitle"><span><i data-icon="compass"></i>Trend scanner - which variables are changing here?</span>
+        <button class="btn small" id="btnScan">Scan all variables</button></div>
+      <div id="scanOut" class="fine">Tests every variable in the catalog for this region and time window, and ranks them by how significant their trend is. Click a row to investigate it.</div>
+    </div>
+
+    <div class="grid-bottom">
+      <div class="panel">
+        <div class="paneltitle"><span>Seasonal cycle</span><span class="hint">Average for each month - this is what "removing seasons" subtracts.</span><button class="btn small" data-png="seasonChart"><i data-icon="download"></i>PNG</button></div>
+        <div class="chartbox"><canvas id="seasonChart"></canvas></div>
+      </div>
+      <div class="panel" id="droughtPanel">
+        <div class="paneltitle"><span>Hydro-drought early warning</span><span><span id="droughtBadge" class="badge">-</span> <button class="btn small" data-png="droughtChart"><i data-icon="download"></i>PNG</button></span></div>
+        <p class="howto">Each bar is one month. Blue is wetter than normal, orange and red are drier. Bars below -1 mean the dam's inflow is at risk.</p>
+        <div class="chartbox"><canvas id="droughtChart"></canvas></div>
+        <div id="droughtInfo" class="fine"></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- Wizard -->
+<div class="modal" id="wizard" hidden>
+  <div class="dialog">
+    <button class="close" data-close>×</button>
+    <div class="steps" id="wizSteps"></div>
+    <div id="wizBody"></div>
+  </div>
+</div>
+
+<!-- Demos -->
+<div class="modal" id="demos" hidden>
+  <div class="dialog">
+    <button class="close" data-close>×</button>
+    <h2>Demonstration cases</h2>
+    <p>Sit back - each demo drives the tool step by step and explains what it finds, using live NASA data.</p>
+    <div class="cards" id="demoCards"></div>
+  </div>
+</div>
+
+<!-- Tour caption -->
+<div class="tour" id="tour" hidden>
+  <div class="tour-head"><b id="tourTitle"></b><span id="tourStep"></span></div>
+  <div id="tourText"></div>
+  <div class="tour-btns">
+    <button class="btn ghost small" id="tourStop">Exit demo</button>
+    <button class="btn primary small" id="tourNext">Next<i class="i after" data-icon="chevron-right"></i></button>
+  </div>
+</div>
+
+<!-- How it works: interactive explainer (see js/learn.js) -->
+<div class="modal learn-modal" id="learn" hidden role="dialog" aria-modal="true" aria-labelledby="learnTitle">
+  <div class="learn-sheet">
+    <header class="learn-head">
+      <div>
+        <h2 id="learnTitle">How HydroWatch works</h2>
+        <p>Seven short, hands-on steps. Drag, click and watch the real statistics react.</p>
+      </div>
+      <button class="close" data-close aria-label="Close">&times;</button>
+    </header>
+    <div class="learn-progress" aria-hidden="true"><i id="learnBar"></i></div>
+    <div class="learn-body">
+      <nav class="learn-steps" id="learnSteps" aria-label="Steps"></nav>
+      <main class="learn-stage" id="learnStage" tabindex="-1"></main>
+    </div>
+    <footer class="learn-foot">
+      <button class="btn" id="learnBack"><i data-icon="arrow-left"></i>Back</button>
+      <span class="learn-count" id="learnCount" aria-live="polite"></span>
+      <button class="btn primary" id="learnNext">Next</button>
+    </footer>
+  </div>
+</div>
+
+<script src="vendor/leaflet.min.js"></script>
+<script src="vendor/chart.umd.min.js"></script>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
